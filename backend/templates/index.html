@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 p-4 md:p-8">
+
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold mb-6 text-white">Smart Attendance Dashboard</h1>
+
+        <div id="table-container" class="mb-12">
+            <div class="text-yellow-400">Loading attendance data...</div>
+        </div>
+
+        <div class="bg-gray-800 p-6 rounded-lg shadow-md border border-gray-700">
+            <h2 class="text-2xl font-bold text-white mb-4">Substitute / Manual Override</h2>
+            <p class="text-gray-400 mb-4 text-sm">If you are a substitute, enter your ID and select the class you are taking over.</p>
+            
+            <div class="flex gap-4 mb-6">
+                <input type="text" id="sub-faculty-id" placeholder="Enter Your Faculty ID (e.g., faculty_b)" 
+                       class="p-3 rounded bg-gray-700 text-white border border-gray-600 w-full focus:outline-none focus:border-blue-500">
+            </div>
+            
+            <div id="schedule-list" class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <div class="text-gray-400">Loading today's schedules...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const tableContainer = document.getElementById('table-container');
+        const scheduleList = document.getElementById('schedule-list');
+        const subFacultyInput = document.getElementById('sub-faculty-id');
+
+        // --- 1. Fetch and Display Attendance ---
+        async function fetchAttendance() {
+            try {
+                const response = await fetch('/status'); 
+                const data = await response.json();
+
+                tableContainer.innerHTML = '';
+                const table = document.createElement('table');
+                table.className = "min-w-full divide-y divide-gray-700 bg-gray-800 shadow-md rounded-lg";
+
+                table.innerHTML = `
+                    <thead class="bg-gray-700">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">User ID</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Class Code</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Log Time</th>
+                        </tr>
+                    </thead>
+                `;
+
+                const tbody = document.createElement('tbody');
+                tbody.className = "bg-gray-800 divide-y divide-gray-700";
+
+                if (data.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="4" class="px-6 py-4 text-center text-gray-400">No attendance data for today.</td></tr>`;
+                }
+
+                data.forEach(record => {
+                    const row = document.createElement('tr');
+                    let statusClass = "text-gray-100";
+                    let statusText = "Unknown";
+
+                    if (record.status === 'final_present') {
+                        row.className = "bg-green-900 bg-opacity-40"; 
+                        statusClass = "text-green-400 font-semibold";
+                        statusText = "Final Present";
+                    } else if (record.status === 'temporary_present') {
+                        row.className = "bg-yellow-900 bg-opacity-40"; 
+                        statusClass = "text-yellow-400 font-semibold";
+                        statusText = "Temporary Present";
+                    }
+
+                    const logTime = new Date(record.log_time).toLocaleTimeString();
+
+                    row.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-100">${record.user_id}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">${record.class_code || 'N/A'}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm ${statusClass}">${statusText}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">${logTime}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+                table.appendChild(tbody);
+                tableContainer.appendChild(table);
+            } catch (error) {
+                console.error('Fetch error:', error);
+            }
+        }
+
+        // --- 2. Fetch and Display Schedule Buttons ---
+        async function loadSchedules() {
+            const scheduleList = document.getElementById('schedule-list');
+            
+            try {
+                const response = await fetch('/get_schedules');
+                
+                // If the server crashed (500) or not found (404)
+                if (!response.ok) {
+                    throw new Error(`Server Error: ${response.status}`);
+                }
+
+                const schedules = await response.json();
+                
+                scheduleList.innerHTML = '';
+                
+                if (schedules.length === 0) {
+                    scheduleList.innerHTML = '<div class="text-gray-400 col-span-3 p-4 border border-gray-700 rounded">No classes found for today (Day ' + (new Date().getDay() + 1) + '). Check database schedules.</div>';
+                    return;
+                }
+
+                schedules.forEach(sch => {
+                    const card = document.createElement('div');
+                    card.className = "border border-gray-600 p-4 rounded bg-gray-700 hover:bg-gray-600 transition";
+                    
+                    card.innerHTML = `
+                        <div class="font-bold text-lg text-green-400">${sch.class_code}</div>
+                        <div class="text-sm text-gray-300 mb-1">${sch.class_name}</div>
+                        <div class="text-xs text-gray-400">${sch.start_time} - ${sch.end_time}</div>
+                        <div class="text-xs text-gray-500 italic mb-3">Assigned: ${sch.faculty_id}</div>
+                        
+                        <button onclick="takeOverClass(${sch.schedule_id})" 
+                                class="w-full bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold py-2 px-4 rounded shadow">
+                            Take Over Class
+                        </button>
+                    `;
+                    scheduleList.appendChild(card);
+                });
+            } catch (error) {
+                console.error("Schedule error:", error);
+                scheduleList.innerHTML = `<div class="text-red-500 border border-red-500 p-4 rounded bg-red-900 bg-opacity-20 col-span-3">
+                    <strong>Error loading schedules:</strong><br>
+                    ${error.message}<br><br>
+                    <em>Tip: Check if 'attendance.py' has the 'get_all_todays_schedules' function.</em>
+                </div>`;
+            }
+        }
+
+        // --- 3. Handle Takeover ---
+        async function takeOverClass(scheduleId) {
+            const facultyId = subFacultyInput.value.trim();
+            if (!facultyId) {
+                alert("Please enter your Faculty ID first.");
+                return;
+            }
+
+            if(!confirm(`Are you sure you want to take over Schedule #${scheduleId} as ${facultyId}?`)) return;
+
+            try {
+                const response = await fetch('/assign_substitute', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ schedule_id: scheduleId, faculty_id: facultyId })
+                });
+                
+                const result = await response.json();
+                if(response.ok) {
+                    alert("Success! You are now the active faculty for this class.");
+                    loadSchedules(); // Refresh list
+                } else {
+                    alert("Error: " + result.error);
+                }
+            } catch (error) {
+                alert("Failed to connect to server.");
+            }
+        }
+
+        // Init
+        fetchAttendance();
+        loadSchedules();
+        setInterval(fetchAttendance, 3000); // Poll attendance
+    </script>
+</body>
+</html>

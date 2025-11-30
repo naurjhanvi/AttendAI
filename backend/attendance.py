@@ -36,12 +36,14 @@ def get_all_todays_schedules():
     """Returns a list of classes for today that HAVE NOT ENDED yet."""
     today = datetime.now()
     current_day_mysql = today.isoweekday() % 7 + 1 
-    current_time = today.strftime('%H:%M:%S') # Get current time string
+    current_time = today.strftime('%H:%M:%S') 
     
     conn = get_db_connection()
+    if not conn:
+        return {'error': 'Database connection failed'}, 500
+
     cursor = conn.cursor(dictionary=True)
     try:
-        # --- UPDATED QUERY: Added 'AND s.end_time >= %s' ---
         query = """
             SELECT s.schedule_id, s.start_time, s.end_time, c.class_code, c.class_name, s.faculty_id
             FROM schedules s
@@ -53,14 +55,15 @@ def get_all_todays_schedules():
         cursor.execute(query, (current_day_mysql, current_time))
         results = cursor.fetchall()
         
-        # Convert timedeltas to strings
         for row in results:
             if 'start_time' in row and not isinstance(row['start_time'], str):
                 row['start_time'] = str(row['start_time'])
             if 'end_time' in row and not isinstance(row['end_time'], str):
                 row['end_time'] = str(row['end_time'])
             
-        return results
+        return results, 200
+    except Exception as e:
+        return {'error': str(e)}, 500
     finally:
         cursor.close()
         conn.close()
@@ -75,15 +78,12 @@ def log_student_entry(user_id, schedule_id):
     
     cursor = conn.cursor(dictionary=True)
     try:
-        # Check if confirmed
         cursor.execute("SELECT * FROM attendance_log WHERE user_id = %s AND schedule_id = %s AND log_date = %s AND status = 'final_present'", (user_id, schedule_id, today_date))
         if cursor.fetchone(): return {'message': 'Student already confirmed for this class'}, 200
 
-        # Check if temporary
         cursor.execute("SELECT * FROM attendance_log WHERE user_id = %s AND schedule_id = %s AND log_date = %s AND status = 'temporary_present'", (user_id, schedule_id, today_date))
         if cursor.fetchone(): return {'message': 'Student already temporary for this class'}, 200
 
-        # Log new entry
         cursor.execute("INSERT INTO attendance_log (user_id, schedule_id, status) VALUES (%s, %s, 'temporary_present')", (user_id, schedule_id))
         conn.commit()
         return {'message': f'Successfully logged {user_id} as temporary for schedule {schedule_id}'}, 201
@@ -134,7 +134,6 @@ def get_attendance_status():
         cursor.execute(query_select, (today_date,))
         records = cursor.fetchall()
         
-        # Fix datetime serialization
         for row in records:
             if 'log_time' in row and not isinstance(row['log_time'], str):
                 row['log_time'] = row['log_time'].isoformat()

@@ -12,24 +12,18 @@ from attendance import (
     get_all_todays_schedules
 )
 
-# --- CONFIGURATION ---
 CONFIRMATION_DELAY_SECONDS = 30 
-# ---------------------
 
-# --- Logging Setup ---
-# Fixed: Added encoding='utf-8' to support emojis on Windows
 file_handler = FileHandler('backend.log', encoding='utf-8')
 file_handler.setLevel(logging.INFO)
 file_handler.setFormatter(logging.Formatter(
     '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
 ))
-# ---------------------
 
 app = Flask(__name__)
 app.logger.addHandler(file_handler)
 app.logger.setLevel(logging.INFO)
 
-# State Variables
 CURRENT_ACTIVE_SCHEDULE_ID = None
 CURRENT_ACTIVE_FACULTY_ID = None
 PENDING_SUBSTITUTE = None
@@ -119,8 +113,8 @@ def api_get_status():
 
 @app.route('/get_schedules', methods=['GET'])
 def api_get_schedules():
-    schedules = get_all_todays_schedules()
-    return jsonify(schedules), 200
+    response, status_code = get_all_todays_schedules()
+    return jsonify(response), status_code
 
 @app.route('/assign_substitute', methods=['POST'])
 def api_assign_substitute():

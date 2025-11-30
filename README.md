@@ -2,7 +2,7 @@
 
 AttendAI is an intelligent, automated attendance tracking system powered by facial recognition and AI. It streamlines the attendance process for educational institutions by using computer vision to verify identity and liveness.
 
-## 🚀 Features
+## Features
 
 *   **Real-time Face Recognition**: Instantly identifies registered students and faculty using DeepFace and MTCNN.
 *   **Liveness Detection**: Prevents spoofing (e.g., holding up a photo) using advanced anti-spoofing algorithms.
@@ -13,20 +13,20 @@ AttendAI is an intelligent, automated attendance tracking system powered by faci
 *   **Substitute Management**: Supports manual assignment of substitute teachers.
 *   **Web Dashboard**: A Flask-based interface to view live status and schedules.
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 *   **Backend**: Python, Flask
 *   **AI/ML**: TensorFlow, Keras, DeepFace, MTCNN, OpenCV
 *   **Database**: MySQL
 *   **Frontend**: HTML/CSS (Jinja2 templates)
 
-## 📋 Prerequisites
+## Prerequisites
 
 *   Python 3.8+
 *   MySQL Server
 *   Webcam
 
-## ⚙️ Installation
+## Installation
 
 1.  **Clone the repository**
     ```bash
@@ -56,7 +56,7 @@ AttendAI is an intelligent, automated attendance tracking system powered by faci
     *   Place user images in the `datasets/` folder.
     *   Structure: `datasets/user_id/image.jpg` (e.g., `datasets/student_001/face.jpg`).
 
-## 🏃‍♂️ Running the System
+## Running the System
 
 You need to run two separate processes: the backend server and the camera script.
 
@@ -77,7 +77,7 @@ You need to run two separate processes: the backend server and the camera script
 3.  **Access the Dashboard**
     Open your browser and navigate to [http://localhost:5000](http://localhost:5000) to view the attendance dashboard.
 
-## 📂 Project Structure
+## Project Structure
 
 ```
 AttendAI/
